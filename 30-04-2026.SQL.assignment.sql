@@ -1,0 +1,197 @@
+-- WITH company_avg AS (
+--     SELECT AVG(salary) AS avg_salary
+--     FROM hr.employees
+-- ),
+-- dept_avg AS (
+--     SELECT department_id, AVG(salary) AS avg_salary
+--     FROM hr.employees
+--     GROUP BY department_id
+-- ),
+-- high_earners AS (
+--     SELECT e.employee_id, e.first_name, e.salary, e.department_id
+--     FROM hr.employees e
+--     JOIN dept_avg d
+--       ON e.department_id = d.department_id
+--     WHERE e.salary > d.avg_salary
+--       AND d.avg_salary > (SELECT avg_salary FROM company_avg)
+-- )
+-- SELECT * FROM high_earners;
+
+---------------------------------------------------------------------------------------------------------------
+
+-- dept avg -> rank depts -> top departments -> Employees
+
+-- with dept_avg AS (
+--     select department_id, AVG(salary) AS avg_salary
+--     From hr.EMPLOYEES
+--     group by department_id
+-- ),
+-- ranked_depts as (
+--     select department_id,
+--     avg_salary,
+--     dense_rank() over (order by avg_salary desc) as rnk
+--     from dept_avg
+-- ),
+-- top_depts as (
+--     select department_id
+--     from ranked_depts
+--     where rnk <= 3
+-- )
+-- select e.employee_id, e.first_name, e.salary, e.department_id
+-- from hr.employees e
+-- join top_depts t
+-- on e.department_id = t.department_id;
+
+---------------------------------------------------------------------------------------------------------------
+
+-- Dept stats = strong dept = top earners in dept
+
+-- with dept_stats as (
+--     select department_id,
+--             count(*) as emp_count,
+--             avg(salary) as avg_salary
+--     from hr.EMPLOYEES
+--     group by department_id
+-- ),  
+-- strong_depts as (
+--     select department_id
+--     from dept_stats
+--     where emp_count >= 3
+--     and avg_salary >8000
+-- ),
+-- dept_max as (
+--     select department_id, max(salary) as max_salary
+--     from hr.EMPLOYEES
+--     group by department_id
+-- )
+-- select e.employee_id, e.first_name, e.salary, e.department_id
+-- from hr.employees e
+-- join strong_depts s
+-- on e.department_id = s.department_id
+-- join dept_max m
+-- on e.department_id = m.department_id
+-- where e.salary = m.max_salary;
+
+---------------------------------------------------------------------------------------------------------------
+
+-- 4. Company avg = dept performance = high performing depts
+
+-- with company_avg as (
+--     select avg(salary) as avg_salary
+--     from hr.employees
+-- ),
+-- dept_performance as (
+--     select department_id,
+--             avg(salary) as avg_salary,
+--             count(*) as emp_count
+--         from hr.employees
+--         group by department_id
+-- ),
+-- high_perf_depts as (
+--     select department_id
+--     from dept_performance
+--     where avg_salary > (select avg_salary from company_avg)
+--     and emp_count >=3
+-- )
+-- select e.employee_id, e.first_name, e.salary, e.department_id
+-- from hr.employees e
+-- join high_perf_depts h
+-- on e.department_id = h.department_id
+-- where e.salary > (
+--     select avg(salary) 
+--     from hr.employees e2
+--     where e2.department_id = e.department_id
+-- );
+
+---------------------------------------------------------------------------------------------------------------
+
+--5. company_avg = dept avg = ranked employees in strong
+
+-- WITH company_avg AS (
+--     SELECT AVG(salary) AS avg_salary
+--     FROM hr.employees
+-- ),
+-- dept_avg AS (
+--     SELECT department_id,
+--            AVG(salary) AS avg_salary
+--     FROM hr.employees
+--     GROUP BY department_id
+-- ),
+-- strong_depts AS (
+--     SELECT department_id
+--     FROM dept_avg
+--     WHERE avg_salary > (SELECT avg_salary FROM company_avg)
+-- )
+-- SELECT employee_id,
+--        first_name,
+--        salary,
+--        department_id,
+--        RANK() OVER (
+--            PARTITION BY department_id
+--            ORDER BY salary DESC
+--        ) AS dept_rank
+-- FROM hr.employees
+-- WHERE department_id IN (SELECT department_id FROM strong_depts);
+
+---------------------------------------------------------------------------------------------------------------
+
+-- 6. Company avg → Dept avg → Employees above both averages
+
+-- WITH company_avg AS (
+--     SELECT AVG(salary) AS avg_salary
+--     FROM hr.employees
+-- ),
+-- dept_avg AS (
+--     SELECT department_id,
+--            AVG(salary) AS avg_salary
+--     FROM hr.employees
+--     GROUP BY department_id
+-- ),
+-- qualified_emps AS (
+--     SELECT e.employee_id,
+--            e.first_name,
+--            e.salary,
+--            e.department_id
+--     FROM hr.employees e
+--     JOIN dept_avg d
+--       ON e.department_id = d.department_id
+--     WHERE e.salary > d.avg_salary
+--       AND e.salary > (SELECT avg_salary FROM company_avg)
+-- )
+-- SELECT * FROM qualified_emps;
+
+---------------------------------------------------------------------------------------------------------------
+
+-- 7. Dept stats → Valid depts → Top earners in each dept
+
+-- WITH dept_stats AS (
+--     SELECT department_id,
+--            COUNT(*) AS emp_count,
+--            AVG(salary) AS avg_salary,
+--            MAX(salary) AS max_salary
+--     FROM hr.employees
+--     GROUP BY department_id
+-- ),
+-- valid_depts AS (
+--     SELECT department_id
+--     FROM dept_stats
+--     WHERE emp_count >= 3
+--       AND avg_salary > 7000
+-- ),
+-- top_earners AS (
+--     SELECT e.employee_id,
+--            e.first_name,
+--            e.salary,
+--            e.department_id
+--     FROM hr.employees e
+--     JOIN valid_depts v
+--       ON e.department_id = v.department_id
+--     WHERE e.salary = (
+--         SELECT MAX(salary)
+--         FROM hr.employees e2
+--         WHERE e2.department_id = e.department_id
+--     )
+-- )
+-- SELECT * FROM top_earners;
+
+---------------------------------------------------------------------------------------------------------------
